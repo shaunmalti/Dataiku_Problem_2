@@ -111,7 +111,7 @@ def weighted_hist(x, weights, **kwargs):
 
 def plots(data):
     grid = sns.FacetGrid(data, col='Target', aspect=1.6)
-    grid.map(weighted_hist, 'LabourUnion', 'InstanceWeight', bins=np.arange(data['LabourUnion'].nunique())-0.5)
+    grid.map(weighted_hist, 'PrevState', 'InstanceWeight')
     plt.show()
 
     # labourUnionDF = data.loc[
@@ -120,6 +120,34 @@ def plots(data):
     # grid.map(weighted_hist, 'IndustryCodeString', 'InstanceWeight',
     #          bins=np.arange(data['IndustryCodeString'].nunique()) - 0.5)
     # plt.show()
+
+def changeLabourUnion(df):
+    # starting with labour union, we can see different distributions across classes
+
+    # get percentage of negative class (-50k) with labour union no
+    percNoNeg = (df.loc[(df['Target'] == ' - 50000.') & (df['LabourUnion'] == ' No')].shape[0] /
+                 df.loc[(df['Target'] == ' - 50000.') & (df['LabourUnion'] != ' Not in universe')].shape[0])
+
+    # print(percNoNeg)
+    # print('NEGATIVE CLASS OLD LABOUR UNION DISTR')
+    # print(df.loc[(df['Target'] == ' - 50000.'), 'LabourUnion'].value_counts())
+
+    a = df.loc[(df['Target'] == ' - 50000.') & (df['LabourUnion'] == ' Not in universe'), 'LabourUnion']
+    # apply that percentage to the occurrances of not in universe for the same class (-50k)
+    df.loc[a.sample(frac=percNoNeg).index, 'LabourUnion'] = ' No'
+    # apply yes to the rest
+    df.loc[(df['Target'] == ' - 50000.') & (df['LabourUnion'] == ' Not in universe'), 'LabourUnion'] = ' Yes'
+
+    # print('NEGATIVE CLASS NEW LABOUR UNION DISTR')
+    # print(df.loc[(df['Target'] == ' - 50000.'), 'LabourUnion'].value_counts())
+
+    # doing the same for the positive class (+50k)
+    percNopos = (df.loc[(df['Target'] == ' 50000+.') & (df['LabourUnion'] == ' No')].shape[0] /
+                 df.loc[(df['Target'] == ' 50000+.') & (df['LabourUnion'] != ' Not in universe')].shape[0])
+    b = df.loc[(df['Target'] == ' 50000+.') & (df['LabourUnion'] == ' Not in universe'), 'LabourUnion']
+    df.loc[b.sample(frac=percNopos).index, 'LabourUnion'] = ' No'
+    df.loc[(df['Target'] == ' 50000+.') & (df['LabourUnion'] == ' Not in universe'), 'LabourUnion'] = ' Yes'
+    return df
 
 def main():
     train = import_data('census_income_learn')
@@ -135,7 +163,6 @@ def main():
 
     # df = df.replace([' Not in universe'], [None])
     # df = df.replace([' ?'], [None])
-
     plots(df)
     exit()
 
@@ -185,7 +212,14 @@ def main():
     df.loc[df[
                'HouseholdSummaryStat'] == ' Child under 18 ever married', 'HouseholdSummaryStat'] = ' Child under 18 never married'
 
-    explore(df)
+    # now removing nulls and not in universe values
+    df = changeLabourUnion(df)
+
+    # education last week column contains information that should be explained by the overall education column
+    # therefore can be dropped -- check later
+
+
+
     return
 
 if __name__ == '__main__':
